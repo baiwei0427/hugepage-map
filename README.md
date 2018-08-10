@@ -12,3 +12,10 @@ To permanently add this to the kernel commandline, append it to GRUB_CMDLINE_LIN
 Reboot to make sure it worked. After rebooting, you can also use the following command to change the number of hugepages to <code>N</code>
 
 <code>$ sysctl -w vm.nr_hugepages=N</code>
+
+## Mount 1GB hugepages on the host
+<code>
+$ mkdir /dev/hugepages1G
+  
+$ mount -t hugetlbfs -o pagesize=1G none /dev/hugepages1G
+</code>
