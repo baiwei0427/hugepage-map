@@ -1,4 +1,4 @@
-all: main.c
-	gcc -o hugepage-user main.c -Wall
+all: user.c
+	gcc -o hugepage-user user.c -Wall
 clean:
 	rm -f hugepage-user
