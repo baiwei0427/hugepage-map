@@ -4,7 +4,8 @@
 #include <sys/mman.h>
 #include <fcntl.h>
 
-#define FILE_NAME "/dev/hugepages1G/random"
+#define DRIVER_FILE "/dev/hugepage-driver"
+#define MEM_FILE "/dev/hugepages1G/random"
 #define LENGTH (1024UL * 1024 * 1024)   // 1G
 #define PROTECTION (PROT_READ | PROT_WRITE)
 #define ADDR (void *)(0x0UL)
@@ -18,34 +19,48 @@ static void print_bytes(char *addr);
 int main()
 {
 	void *addr;
-	int fd, ret;
+	int mem_fd, driver_fd, ret;
+	int i;
 
-	fd = open(FILE_NAME, O_CREAT | O_RDWR, 0755);
-	if (fd < 0) {
-		perror("Open failed");
+	driver_fd = open(DRIVER_FILE, O_RDWR);
+	if (driver_fd < 0) {
+		perror("Fail to open driver file");
+		exit(1);		
+	}
+
+	mem_fd = open(MEM_FILE, O_CREAT | O_RDWR, 0755);
+	if (mem_fd < 0) {
+		perror("Fail to open hugepage memory file");
 		exit(1);
 	}
 
-	addr = mmap(ADDR, LENGTH, PROTECTION, FLAGS, fd, 0);
+	addr = mmap(ADDR, LENGTH, PROTECTION, FLAGS, mem_fd, 0);
 	if (addr == MAP_FAILED) {
 		perror("mmap");
-		unlink(FILE_NAME);
+		unlink(MEM_FILE);
 		exit(1);
 	} 
 
 	printf("Returned address is %p\n", addr);
 
 	print_bytes(addr);
-	write_bytes(addr, LENGTH);
-        
+
+	i = 0;
+	while (i++ < 10) {
+		// Communicate with the driver
+		write(driver_fd, addr, 1);
+		print_bytes(addr);
+	}
+
+	/*write_bytes(addr, LENGTH);
         print_bytes(addr);
-	ret = check_bytes(addr, LENGTH);
-
+	ret = check_bytes(addr, LENGTH);*/
 	munmap(addr, LENGTH);
-	close(fd);
-	unlink(FILE_NAME);
+	close(mem_fd);
+	unlink(MEM_FILE);
+	close(driver_fd);
 
-	return ret;
+	return 0;
 }
 
 static void write_bytes(char *addr, unsigned long len)
