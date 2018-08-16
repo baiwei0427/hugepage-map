@@ -13,14 +13,13 @@
 #define LENGTH (1024UL * 1024 * 1)   // 1M
 #define PROTECTION (PROT_READ | PROT_WRITE)
 #define ADDR (void *)(0x0UL)
-#define FLAGS (MAP_SHARED)
+#define FLAGS (MAP_SHARED | MAP_POPULATE)
 #define BAD_PHYS_ADDR 0
 #define PFN_MASK_SIZE 8
 
-// Set values for each byte in memory range [addr, addr + len)
-static void write_bytes(char *addr, unsigned long len);
-static int check_bytes(char *addr, unsigned long len);
-static void print_bytes(char *addr);
+static void write_byt(char *addr, char c);
+static void print_byt(char *addr);
+
 // Get physical address of any mapped virtual address in the current process
 uint64_t mem_virt2phy(const void *virtaddr);
 
@@ -28,6 +27,8 @@ int main()
 {
 	void *addr;
 	int hugepage_fd, ret;
+	uint64_t paddr;
+	char buf[100] = {0};
 
 	hugepage_fd = open(HUGEPAGE_FILE, O_CREAT | O_RDWR, 0755);
 	if (hugepage_fd < 0) {
@@ -42,14 +43,14 @@ int main()
 		exit(1);
 	} 
 
+	paddr = mem_virt2phy(addr);
 	printf("Virtual address is %p\n", addr);
-	printf("Physical address is %llu\n", mem_virt2phy(addr));
+	printf("Physical address is %llu\n", paddr);
 
-	print_bytes(addr);
-	//write_bytes(addr, LENGTH);
-        print_bytes(addr);
-	//ret = check_bytes(addr, LENGTH);
-
+	print_byt((char*)addr);
+	write_byt((char*)addr, (char)1);
+	print_byt((char*)addr);
+	
 	munmap(addr, LENGTH);
 	close(hugepage_fd);
 	unlink(HUGEPAGE_FILE);
@@ -57,32 +58,16 @@ int main()
 	return 0;
 }
 
-static void write_bytes(char *addr, unsigned long len)
-{
-	unsigned long i;
-
-	for (i = 0; i < len; i++) {
-		*(addr + i) = (char)i;
-        }
+static void write_byt(char *addr, char c)
+{	
+	if (addr) {
+		*addr = c;
+	}	
 }
 
-static int check_bytes(char *addr, unsigned long len)
+static void print_byt(char *addr)
 {
-	unsigned long i;
-
-	for (i = 0; i < len; i++) {	
-                if (*(addr + i) != (char)i) {
-			printf("Mismatch at %lu\n", i);
-			return 1;
-		}
-        }
-
-	return 0;
-}
-
-static void print_bytes(char *addr)
-{
-	printf("First hex is %x\n", *((unsigned int *)addr));
+	printf("%d\n", (int)(*addr));
 }
 
 uint64_t mem_virt2phy(const void *virtaddr)
@@ -122,8 +107,6 @@ uint64_t mem_virt2phy(const void *virtaddr)
 		        __func__, retval, PFN_MASK_SIZE);
 		return BAD_PHYS_ADDR;
 	}
-
-	printf("%llu\n", page);
 
 	/*
 	 * the pfn (page frame number) are bits 0-54 (see
