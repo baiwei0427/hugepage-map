@@ -62,12 +62,18 @@ static void write_byt(char *addr, char c)
 {	
 	if (addr) {
 		*addr = c;
+	} else {
+		fprintf(stderr, "%s(): empty pointer\n", __func__);		
 	}	
 }
 
 static void print_byt(char *addr)
 {
-	printf("%d\n", (int)(*addr));
+	if (addr) {
+		printf("%d\n", (int)(*addr));
+	} else {
+		fprintf(stderr, "%s(): empty pointer\n", __func__);	
+	}
 }
 
 uint64_t mem_virt2phy(const void *virtaddr)
