@@ -8,7 +8,7 @@
 #include <fcntl.h>
 #include <errno.h>
 
-//#define DRIVER_FILE "/dev/hugepage-driver"
+#define DRIVER_FILE "/dev/hugepage-driver"
 #define HUGEPAGE_FILE "/dev/hugepages1G/random"
 #define LENGTH (1024UL * 1024 * 1)   // 1M
 #define PROTECTION (PROT_READ | PROT_WRITE)
@@ -26,9 +26,15 @@ uint64_t mem_virt2phy(const void *virtaddr);
 int main()
 {
 	void *addr;
-	int hugepage_fd, ret;
+	int hugepage_fd, driver_fd, ret;
 	uint64_t paddr;
 	char buf[100] = {0};
+
+	driver_fd = open(DRIVER_FILE, O_RDWR);
+	if (driver_fd < 0) {
+		perror("Fail to open driver file");
+		exit(1);
+	}
 
 	hugepage_fd = open(HUGEPAGE_FILE, O_CREAT | O_RDWR, 0755);
 	if (hugepage_fd < 0) {
@@ -47,13 +53,19 @@ int main()
 	printf("Virtual address is %p\n", addr);
 	printf("Physical address is %llu\n", paddr);
 
-	print_byt((char*)addr);
+	//print_byt((char*)addr);
 	write_byt((char*)addr, (char)1);
+	//print_byt((char*)addr);
+	
+	snprintf(buf, sizeof(buf), "%llu", paddr);
+	write(driver_fd, buf, strlen(buf));
 	print_byt((char*)addr);
 	
 	munmap(addr, LENGTH);
 	close(hugepage_fd);
 	unlink(HUGEPAGE_FILE);
+
+	close(driver_fd);
 
 	return 0;
 }
@@ -80,7 +92,7 @@ uint64_t mem_virt2phy(const void *virtaddr)
 {
 	int fd, retval;
 	uint64_t page, physaddr;
-	unsigned long virt_pfn;	// virtual page frame number
+	unsigned long long virt_pfn;	// virtual page frame number
 	int page_size;
 	off_t offset;
 

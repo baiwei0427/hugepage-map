@@ -27,38 +27,19 @@ static int dev_release(struct inode *inode, struct file *file)
 
 static ssize_t dev_write(struct file *file, const char __user *buf, size_t count, loff_t *off)
 {
-        int     res;
-        struct  page *page;
-        unsigned int *vir_addr = NULL, *phy_addr = NULL;
+        char str[100];
+        unsigned long long paddr;
+        char *vaddr;
 
-        printk(KERN_INFO "%s\n", __FUNCTION__);
-        
-        down_read(&current->mm->mmap_sem);
-        // Pin one user page in memory
-        res = get_user_pages(current, 
-                             current->mm,
-                             (unsigned long)buf,
-                             1,
-                             1,              
-                             1,
-                             &page,
-                             NULL);
+        copy_from_user(str, buf, sizeof(str));
+        sscanf(str, "%llu", &paddr);
 
-        if (res) {
-                printk(KERN_INFO "Got mmaped.\n");
-                vir_addr = (unsigned int*)kmap(page);
-                phy_addr = (unsigned int*)virt_to_phys((void*)phy_addr);
-                printk(KERN_INFO "Virtual address is %p\n", vir_addr);
-                printk(KERN_INFO "Physical address is %p\n", phy_addr);
-                *vir_addr = *vir_addr + 1;
-                kunmap(page);
-                page_cache_release(page);
-        } else {
-                printk(KERN_INFO "Fail to mmap\n");
-        }
-
-        up_read(&current->mm->mmap_sem);
-
+        printk(KERN_INFO "The physical address is %llu\n", paddr);
+        vaddr = phys_to_virt(paddr);
+        printk(KERN_INFO "The virtual address is %p\n", vaddr);        
+        printk(KERN_INFO "The old value is %d\n", (int)(*vaddr));
+        *vaddr = *vaddr + 1;
+        printk(KERN_INFO "The new value is %d\n", (int)(*vaddr));
         return 0;
 }
 
