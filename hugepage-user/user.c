@@ -26,7 +26,7 @@ uint64_t mem_virt2phy(const void *virtaddr);
 int main()
 {
 	void *addr;
-	int hugepage_fd, driver_fd, ret;
+	int hugepage_fd, driver_fd, ret, i;
 	uint64_t paddr;
 	char buf[100] = {0};
 
@@ -58,8 +58,11 @@ int main()
 	//print_byt((char*)addr);
 	
 	snprintf(buf, sizeof(buf), "%llu", paddr);
-	write(driver_fd, buf, strlen(buf));
-	print_byt((char*)addr);
+
+	for (i = 0; i < 10; i++) {
+		write(driver_fd, buf, strlen(buf));
+		print_byt((char*)addr);
+	}
 	
 	munmap(addr, LENGTH);
 	close(hugepage_fd);
