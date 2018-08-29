@@ -10,7 +10,7 @@
 
 #define DRIVER_FILE "/dev/hugepage-driver"
 #define HUGEPAGE_FILE "/dev/hugepages1G/random"
-#define LENGTH (1024UL * 1024 * 1)   // 1M
+#define LENGTH (1024 * 1024 * 1)   // 1M
 #define PROTECTION (PROT_READ | PROT_WRITE)
 #define ADDR (void *)(0x0UL)
 #define FLAGS (MAP_SHARED | MAP_POPULATE)
@@ -25,8 +25,8 @@ uint64_t mem_virt2phy(const void *virtaddr);
 
 int main()
 {
-	void *addr;
-	int hugepage_fd, driver_fd, ret, i;
+	char *addr;
+	int i, hugepage_fd, driver_fd;
 	uint64_t paddr;
 	char buf[100] = {0};
 
@@ -42,7 +42,7 @@ int main()
 		exit(1);
 	}
 
-	addr = mmap(ADDR, LENGTH, PROTECTION, FLAGS, hugepage_fd, 0);
+	addr = (char*)mmap(ADDR, LENGTH, PROTECTION, FLAGS, hugepage_fd, 0);
 	if (addr == MAP_FAILED) {
 		perror("mmap");
 		unlink(HUGEPAGE_FILE);
@@ -51,19 +51,30 @@ int main()
 
 	paddr = mem_virt2phy(addr);
 	printf("Virtual address is %p\n", addr);
-	printf("Physical address is %llu\n", paddr);
+	printf("Physical address is %llu\n", (unsigned long long)paddr);
 
-	//print_byt((char*)addr);
-	write_byt((char*)addr, (char)1);
-	//print_byt((char*)addr);
+	for (i = 0; i < LENGTH; i++) {
+		write_byt(addr + i, (char)(i % 256));
+	}
 	
-	snprintf(buf, sizeof(buf), "%llu", paddr);
+	// Send physical memory address and memory length into kernel space
+	snprintf(buf, sizeof(buf), "%llu %d", (unsigned long long)paddr, LENGTH);
+	write(driver_fd, buf, strlen(buf));
 
-	for (i = 0; i < 10; i++) {
-		write(driver_fd, buf, strlen(buf));
-		print_byt((char*)addr);
+	// Check the first byte
+	printf("The value of the first byte is: ");
+	print_byt((char*)addr);
+
+	for (i = 0; i < LENGTH; i++) {	
+		if (addr[i] != (char)((i + 1) % 256)) {
+			fprintf(stderr, "Wrong value at index %d\n", i);
+			goto out;
+		}
 	}
 
+	printf("All the values are correct\n");
+
+out:
 	munmap(addr, LENGTH);
 	close(hugepage_fd);
 	unlink(HUGEPAGE_FILE);
@@ -109,7 +120,7 @@ uint64_t mem_virt2phy(const void *virtaddr)
 	}
 
 	virt_pfn = (unsigned long)virtaddr / page_size;
-	printf("Virtual page frame number is %llu\n", virt_pfn);
+	//printf("Virtual page frame number is %llu\n", virt_pfn);
 
 	offset = sizeof(uint64_t) * virt_pfn;
 	if (lseek(fd, offset, SEEK_SET) == (off_t) - 1) {

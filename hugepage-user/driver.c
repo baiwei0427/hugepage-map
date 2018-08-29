@@ -29,17 +29,27 @@ static ssize_t dev_write(struct file *file, const char __user *buf, size_t count
 {
         char str[100];
         unsigned long long paddr;
+        int i, length;
         char *vaddr;
 
-        copy_from_user(str, buf, sizeof(str));
-        sscanf(str, "%llu", &paddr);
+        if (copy_from_user(str, buf, sizeof(str)) != 0) {
+                printk(KERN_INFO "Copy failes");
+                return 0;
+        }
+
+        sscanf(str, "%llu %d", &paddr, &length);
 
         printk(KERN_INFO "The physical address is %llu\n", paddr);
         vaddr = phys_to_virt(paddr);
         printk(KERN_INFO "The virtual address is %p\n", vaddr);        
-        printk(KERN_INFO "The old value is %d\n", (int)(*vaddr));
-        *vaddr = *vaddr + 1;
-        printk(KERN_INFO "The new value is %d\n", (int)(*vaddr));
+        printk(KERN_INFO "The memory length is %d\n", length);
+
+        // Increase the value of each byte by 1
+        for (i = 0; i < length; i++) {
+                *vaddr = *vaddr + 1;
+                vaddr++;
+        }
+
         return 0;
 }
 
