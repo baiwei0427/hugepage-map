@@ -63,7 +63,7 @@ int main()
 		write(driver_fd, buf, strlen(buf));
 		print_byt((char*)addr);
 	}
-	
+
 	munmap(addr, LENGTH);
 	close(hugepage_fd);
 	unlink(HUGEPAGE_FILE);
@@ -124,7 +124,7 @@ uint64_t mem_virt2phy(const void *virtaddr)
 		fprintf(stderr, "%s(): cannot read /proc/self/pagemap: %s\n", __func__, strerror(errno));
 		return BAD_PHYS_ADDR;
 	} else if (retval != PFN_MASK_SIZE) {
-		fprintf(stderr, "%s(): read %d bytes from /proc/self/pagemap but expected %d:\n", 
+		fprintf(stderr, "%s(): read %d bytes from /proc/self/pagemap but expected %d\n", 
 		        __func__, retval, PFN_MASK_SIZE);
 		return BAD_PHYS_ADDR;
 	}
